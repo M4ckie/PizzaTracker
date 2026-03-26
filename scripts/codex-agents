@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CODEX_DIR="$ROOT_DIR/.codex"
+MANIFEST="$CODEX_DIR/agent-profiles.json"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  scripts/codex-agents list
+  scripts/codex-agents show <profile>
+  scripts/codex-agents workflow [name]
+  scripts/codex-agents approvals [repo-path] [--shell]
+
+Commands:
+  list             List available Codex agent profiles
+  show <profile>   Print a specific profile document
+  workflow [name]  Print a workflow document (default: build-feature)
+  approvals        Run scripts/codex-approvals enable for the current repo
+EOF
+}
+
+require_file() {
+  local path="$1"
+  if [[ ! -f "$path" ]]; then
+    echo "Missing required file: $path" >&2
+    exit 1
+  fi
+}
+
+list_profiles() {
+  require_file "$MANIFEST"
+  python3 - <<'PY' "$MANIFEST"
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as fh:
+    data = json.load(fh)
+
+profiles = data.get("profiles", [])
+if not profiles:
+    print("No profiles found.")
+    raise SystemExit(0)
+
+print("Profiles:")
+for profile in profiles:
+    print(f"- {profile['name']}: {profile['purpose']}")
+
+workflows = data.get("workflows", [])
+if workflows:
+    print("\nWorkflows:")
+    for workflow in workflows:
+        steps = " -> ".join(workflow.get("steps", []))
+        print(f"- {workflow['name']}: {steps}")
+PY
+}
+
+show_profile() {
+  local profile="${1:-}"
+  if [[ -z "$profile" ]]; then
+    echo "Profile name required." >&2
+    usage
+    exit 1
+  fi
+  local path="$CODEX_DIR/profiles/$profile.md"
+  require_file "$path"
+  sed -n '1,220p' "$path"
+}
+
+show_workflow() {
+  local workflow="${1:-build-feature}"
+  local path="$CODEX_DIR/workflows/$workflow.md"
+  require_file "$path"
+  sed -n '1,220p' "$path"
+}
+
+run_approvals() {
+  local script="$ROOT_DIR/scripts/codex-approvals"
+  require_file "$script"
+  "$script" enable "$@"
+}
+
+main() {
+  local cmd="${1:-list}"
+  case "$cmd" in
+    list)
+      list_profiles
+      ;;
+    show)
+      shift || true
+      show_profile "${1:-}"
+      ;;
+    workflow)
+      shift || true
+      show_workflow "${1:-build-feature}"
+      ;;
+    approvals)
+      shift || true
+      run_approvals "$@"
+      ;;
+    -h|--help|help)
+      usage
+      ;;
+    *)
+      echo "Unknown command: $cmd" >&2
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

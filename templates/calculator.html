@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Calculator &mdash; Pizza Dough{% endblock %}
+
+{% block content %}
+<div class="page-calculator">
+  <h1 class="page-title">Dough Calculator</h1>
+
+  <div class="calc-layout">
+    <!-- Inputs panel -->
+    <section class="card inputs-card">
+      <h2 class="card-title">Parameters</h2>
+
+      <div class="form-group">
+        <label for="size-slider">
+          Pizza Size
+          <span class="slider-value" id="size-display">16"</span>
+        </label>
+        <input
+          type="range"
+          id="size-slider"
+          min="10"
+          max="20"
+          value="16"
+          step="1"
+          class="range-input"
+        />
+        <div class="range-labels">
+          <span>10"</span>
+          <span>20"</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="count-slider">
+          Number of Pizzas
+          <span class="slider-value" id="count-display">6</span>
+        </label>
+        <input
+          type="range"
+          id="count-slider"
+          min="1"
+          max="10"
+          value="6"
+          step="1"
+          class="range-input"
+        />
+        <div class="range-labels">
+          <span>1</span>
+          <span>10</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="thickness-select">Crust Thickness</label>
+        <select id="thickness-select" class="select-input">
+          <option value="thin">Thin</option>
+          <option value="regular" selected>Regular</option>
+          <option value="thick">Thick</option>
+        </select>
+      </div>
+
+      <div class="form-group toggle-group">
+        <span class="toggle-label">Gluten-Free</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="gf-toggle" />
+          <span class="toggle-track">
+            <span class="toggle-thumb"></span>
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Results panel -->
+    <section class="card results-card">
+      <h2 class="card-title">Ingredients</h2>
+      <p class="results-subtitle" id="results-subtitle">For 6 &times; 16" regular pizzas</p>
+
+      <table class="results-table" id="results-table">
+        <thead>
+          <tr>
+            <th>Ingredient</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody id="results-body">
+          <tr><td colspan="2" class="loading-cell">Calculating...</td></tr>
+        </tbody>
+      </table>
+
+      <div class="ball-weight-note" id="ball-weight-note"></div>
+    </section>
+  </div>
+
+  <!-- Save batch -->
+  <section class="card save-card">
+    <h2 class="card-title">Save This Batch</h2>
+    <div class="save-fields">
+      <div class="form-group">
+        <label for="made-date">Date Made</label>
+        <input type="date" id="made-date" class="date-input" />
+      </div>
+      <textarea
+        id="batch-notes"
+        class="notes-input"
+        placeholder="Optional notes (e.g. party batch, tried 48h ferment...)"
+        rows="2"
+      ></textarea>
+    </div>
+    <button id="save-batch-btn" class="btn btn-primary">Save as Batch</button>
+    <p class="save-feedback" id="save-feedback"></p>
+  </section>
+
+  <!-- Instructions -->
+  <section class="card instructions-card">
+    <button class="collapsible-toggle" id="instructions-toggle" aria-expanded="false">
+      <span>Instructions</span>
+      <span class="collapsible-icon">&#9660;</span>
+    </button>
+
+    <div class="collapsible-body" id="instructions-body" hidden>
+      <!-- Regular instructions -->
+      <div id="instructions-regular">
+        <h3>Dough Making Instructions</h3>
+        <ol class="instructions-list">
+          <li>Cool water to &lt;60&deg;F.</li>
+          <li>Mix the water and active dry yeast.</li>
+          <li>Add flour and Olive Oil and mix for 2 minutes.</li>
+          <li>Keep mixing on low, then add Sugar and Salt.</li>
+          <li>Mix for 10 more minutes.</li>
+          <li>Cover the dough with plastic wrap and rest for 1&ndash;3 hours.</li>
+          <li>Divide the dough into portions.</li>
+          <li>Shape into balls, sealing the seam.</li>
+          <li>Put the dough in a lightly oiled container.</li>
+          <li>Cover tightly and refrigerate for 2&ndash;4 days. 3 days is ideal.</li>
+          <li>Let the dough come to room temperature before using.</li>
+        </ol>
+      </div>
+
+      <!-- Gluten-free instructions -->
+      <div id="instructions-gf" hidden>
+        <h3>Gluten-Free Dough Making Instructions</h3>
+        <ol class="instructions-list">
+          <li>Add cold water and yeast to bowl.</li>
+          <li>Add gluten-free flour (I recommend Caputo) and Olive Oil and Mix for 2 minutes.</li>
+          <li>Keep Mixing on low, and then add sugar and salt.</li>
+          <li>Mix for 3&ndash;4 minutes until completely combined.</li>
+          <li>Cover the bowl and put in fridge for 15 minutes (helps firm up the dough).</li>
+          <li>Remove bowl and oil up your hands.</li>
+          <li>Shape dough into dough balls (doesn&apos;t need to be perfect).</li>
+          <li>Put the dough balls into a lightly oiled container.</li>
+          <li>Cover tightly and refrigerate for <strong>up to</strong> 48 hours.</li>
+          <li>If using same day, leave out on counter 3&ndash;4 hours before baking.</li>
+          <li>Let the dough come to room temperature (2&ndash;3 hours) before using (covered).</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

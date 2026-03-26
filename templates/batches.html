@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Batch History &mdash; Pizza Dough{% endblock %}
+
+{% block content %}
+<div class="page-batches">
+  <h1 class="page-title">Batch History</h1>
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat-item">
+      <span class="stat-value" id="stat-total">-</span>
+      <span class="stat-label">Batches</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <span class="stat-value" id="stat-pizzas-baked">-</span>
+      <span class="stat-label">Pizzas Baked</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <span class="stat-value" id="stat-last-made">-</span>
+      <span class="stat-label">Last Made</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <span class="stat-value" id="stat-last-baked">-</span>
+      <span class="stat-label">Last Baked</span>
+    </div>
+  </div>
+
+  <!-- Batch list -->
+  <div id="batches-empty" class="empty-state card" hidden>
+    <p>No batches yet. Head to the <a href="{{ url_for('calculator_page') }}">Calculator</a> to save your first batch!</p>
+  </div>
+
+  <div id="batches-list"></div>
+</div>
+{% endblock %}

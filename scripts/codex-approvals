@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  scripts/codex-approvals enable [repo-path] [--shell]
+  scripts/codex-approvals show [repo-path]
+
+Commands:
+  enable   Mark a repo trusted in ~/.codex/config.toml and add managed allow rules
+  show     Print the managed rule block for a repo
+
+Notes:
+  - The default rule set allows broad direct project commands like python, npx, npm, node, uv, and make.
+  - `--shell` also allows bash/sh wrapper commands. That reduces prompts further, but it can also
+    auto-allow shell-wrapped `git push`, so it is opt-in.
+EOF
+}
+
+CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
+CONFIG_FILE="$CODEX_HOME/config.toml"
+RULES_DIR="$CODEX_HOME/rules"
+RULES_FILE="$RULES_DIR/default.rules"
+
+resolve_repo() {
+  local raw="${1:-$PWD}"
+  if [[ ! -d "$raw" ]]; then
+    echo "Repo path does not exist: $raw" >&2
+    exit 1
+  fi
+  (cd "$raw" && pwd)
+}
+
+block_start() {
+  local repo="$1"
+  printf '# agent-kit managed rules for %s\n' "$repo"
+}
+
+block_end() {
+  printf '# end agent-kit managed rules\n'
+}
+
+ensure_codex_dirs() {
+  mkdir -p "$RULES_DIR"
+  touch "$CONFIG_FILE" "$RULES_FILE"
+}
+
+ensure_project_trust() {
+  local repo="$1"
+  local marker="[projects.\"$repo\"]"
+  if grep -Fq "$marker" "$CONFIG_FILE"; then
+    return
+  fi
+
+  if [[ -s "$CONFIG_FILE" ]]; then
+    printf '\n' >>"$CONFIG_FILE"
+  fi
+  {
+    printf '[projects."%s"]\n' "$repo"
+    printf 'trust_level = "trusted"\n'
+  } >>"$CONFIG_FILE"
+}
+
+build_rules_block() {
+  local repo="$1"
+  local include_shell="$2"
+
+  block_start "$repo"
+  cat <<'EOF'
+prefix_rule(pattern=["python"], decision="allow")
+prefix_rule(pattern=["python3"], decision="allow")
+prefix_rule(pattern=[".venv/bin/python"], decision="allow")
+prefix_rule(pattern=["pip"], decision="allow")
+prefix_rule(pattern=["pip3"], decision="allow")
+prefix_rule(pattern=["pytest"], decision="allow")
+prefix_rule(pattern=["npx"], decision="allow")
+prefix_rule(pattern=["npm"], decision="allow")
+prefix_rule(pattern=["pnpm"], decision="allow")
+prefix_rule(pattern=["yarn"], decision="allow")
+prefix_rule(pattern=["node"], decision="allow")
+prefix_rule(pattern=["uv"], decision="allow")
+prefix_rule(pattern=["uvx"], decision="allow")
+prefix_rule(pattern=["make"], decision="allow")
+prefix_rule(pattern=["just"], decision="allow")
+prefix_rule(pattern=["cargo"], decision="allow")
+prefix_rule(pattern=["go"], decision="allow")
+prefix_rule(pattern=["git", "status"], decision="allow")
+prefix_rule(pattern=["git", "diff"], decision="allow")
+prefix_rule(pattern=["git", "log"], decision="allow")
+prefix_rule(pattern=["git", "rev-parse"], decision="allow")
+prefix_rule(pattern=["git", "branch"], decision="allow")
+prefix_rule(pattern=["git", "checkout"], decision="allow")
+prefix_rule(pattern=["git", "switch"], decision="allow")
+prefix_rule(pattern=["git", "pull"], decision="allow")
+prefix_rule(pattern=["git", "fetch"], decision="allow")
+prefix_rule(pattern=["git", "merge"], decision="allow")
+prefix_rule(pattern=["git", "rebase"], decision="allow")
+prefix_rule(pattern=["git", "add"], decision="allow")
+prefix_rule(pattern=["git", "stash"], decision="allow")
+EOF
+
+  if [[ "$include_shell" == "yes" ]]; then
+    cat <<'EOF'
+prefix_rule(pattern=["bash"], decision="allow")
+prefix_rule(pattern=["sh"], decision="allow")
+prefix_rule(pattern=["/bin/bash", "-lc"], decision="allow")
+EOF
+  fi
+
+  block_end
+}
+
+managed_block_exists() {
+  local repo="$1"
+  grep -Fq "$(block_start "$repo")" "$RULES_FILE"
+}
+
+show_rules() {
+  local repo="$1"
+  build_rules_block "$repo" "no"
+}
+
+enable_rules() {
+  local repo="$1"
+  local include_shell="$2"
+
+  ensure_codex_dirs
+  ensure_project_trust "$repo"
+
+  if managed_block_exists "$repo"; then
+    echo "Managed Codex rule block already exists for: $repo"
+    return
+  fi
+
+  if [[ -s "$RULES_FILE" ]]; then
+    printf '\n' >>"$RULES_FILE"
+  fi
+  build_rules_block "$repo" "$include_shell" >>"$RULES_FILE"
+  echo "Updated $CONFIG_FILE"
+  echo "Updated $RULES_FILE"
+  if [[ "$include_shell" == "yes" ]]; then
+    echo "Shell wrappers were enabled. Shell-wrapped git pushes may now bypass confirmation."
+  else
+    echo "Shell wrappers were not enabled, so bash -lc style commands may still prompt."
+  fi
+}
+
+main() {
+  local cmd="${1:-help}"
+  shift || true
+
+  case "$cmd" in
+    enable)
+      local repo_arg=""
+      local include_shell="no"
+      while [[ $# -gt 0 ]]; do
+        case "$1" in
+          --shell)
+            include_shell="yes"
+            ;;
+          -h|--help)
+            usage
+            exit 0
+            ;;
+          *)
+            if [[ -n "$repo_arg" ]]; then
+              echo "Unexpected argument: $1" >&2
+              usage
+              exit 1
+            fi
+            repo_arg="$1"
+            ;;
+        esac
+        shift
+      done
+      enable_rules "$(resolve_repo "$repo_arg")" "$include_shell"
+      ;;
+    show)
+      local repo_arg="${1:-}"
+      show_rules "$(resolve_repo "$repo_arg")"
+      ;;
+    -h|--help|help)
+      usage
+      ;;
+    *)
+      echo "Unknown command: $cmd" >&2
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

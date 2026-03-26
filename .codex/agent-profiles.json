@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "source": ".claude/agents",
+  "profiles": [
+    {
+      "name": "planner",
+      "purpose": "Analyze requests before implementation and produce a clear spec.",
+      "preferred_execution": "local",
+      "spawn_role": "explorer",
+      "writes_code": false,
+      "path": ".codex/profiles/planner.md"
+    },
+    {
+      "name": "fixer",
+      "purpose": "Implement approved scope with minimal deviation and no scope creep.",
+      "preferred_execution": "local_or_worker",
+      "spawn_role": "worker",
+      "writes_code": true,
+      "path": ".codex/profiles/fixer.md"
+    },
+    {
+      "name": "cleaner",
+      "purpose": "Read-only review for correctness, regressions, security, and maintainability risk.",
+      "preferred_execution": "local",
+      "spawn_role": "explorer",
+      "writes_code": false,
+      "path": ".codex/profiles/cleaner.md"
+    },
+    {
+      "name": "ghost",
+      "purpose": "Add pragmatic tests for meaningful behavior and regressions.",
+      "preferred_execution": "local_or_worker",
+      "spawn_role": "worker",
+      "writes_code": true,
+      "path": ".codex/profiles/ghost.md"
+    },
+    {
+      "name": "librarian",
+      "purpose": "Assess releases, update versioning files, and prepare tags.",
+      "preferred_execution": "local",
+      "spawn_role": "default",
+      "writes_code": true,
+      "path": ".codex/profiles/librarian.md"
+    }
+  ],
+  "workflows": [
+    {
+      "name": "build-feature",
+      "steps": [
+        "planner",
+        "fixer",
+        "cleaner",
+        "ghost_if_needed",
+        "librarian_if_requested"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Settings &mdash; Pizza Dough{% endblock %}
+
+{% block content %}
+<div class="page-settings">
+  <h1 class="page-title">Notification Settings</h1>
+
+  <section class="card">
+    <h2 class="card-title">Add Notification Channel</h2>
+
+    <div class="form-group">
+      <label for="channel-platform">Platform</label>
+      <select id="channel-platform" class="select-input">
+        <option value="telegram">Telegram</option>
+        <option value="discord">Discord</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="channel-label">Label</label>
+      <input type="text" id="channel-label" class="notes-input" placeholder="e.g. My Telegram" style="width:100%" />
+    </div>
+
+    <div id="telegram-fields">
+      <div class="form-group">
+        <label for="tg-bot-token">Bot Token</label>
+        <input type="text" id="tg-bot-token" class="notes-input" placeholder="123456:ABC-DEF..." style="width:100%" />
+      </div>
+      <div class="form-group">
+        <label for="tg-chat-id">Chat ID</label>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <input type="text" id="tg-chat-id" class="notes-input" placeholder="e.g. 123456789" style="flex:1" />
+          <button type="button" class="btn btn-sm" id="tg-lookup-btn">Look up Chat ID</button>
+        </div>
+        <div id="tg-lookup-result" style="margin-top:0.4rem;font-size:0.85rem;color:var(--color-text-muted)"></div>
+      </div>
+    </div>
+
+    <div id="discord-fields" hidden>
+      <div class="form-group">
+        <label for="dc-webhook-url">Webhook URL</label>
+        <input type="text" id="dc-webhook-url" class="notes-input" placeholder="https://discord.com/api/webhooks/..." style="width:100%" />
+      </div>
+    </div>
+
+    <button id="add-channel-btn" class="btn btn-primary">Add Channel</button>
+    <p id="channel-feedback" class="save-feedback"></p>
+  </section>
+
+  <section class="card">
+    <h2 class="card-title">Your Channels</h2>
+    <div id="channels-list"></div>
+    <div id="channels-empty" style="color:var(--color-text-muted);font-size:0.9rem" hidden>No channels configured yet.</div>
+  </section>
+</div>
+{% endblock %}

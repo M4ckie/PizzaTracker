@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from flask_sqlalchemy import SQLAlchemy
 
@@ -17,6 +18,8 @@ class Batch(db.Model):
 
     bakes = db.relationship("Bake", back_populates="batch", cascade="all, delete-orphan",
                             order_by="Bake.baked_date.desc()")
+    reminders = db.relationship("Reminder", back_populates="batch", cascade="all, delete-orphan",
+                                order_by="Reminder.remind_at")
 
     @property
     def baked_count(self):
@@ -55,6 +58,7 @@ class Batch(db.Model):
             "fully_baked": self.fully_baked,
             "last_baked_date": self.last_baked_date.isoformat() if self.last_baked_date else None,
             "bakes": [b.to_dict() for b in self.bakes],
+            "reminders": [r.to_dict() for r in self.reminders],
         }
 
 
@@ -73,4 +77,55 @@ class Bake(db.Model):
             "id": self.id,
             "baked_date": self.baked_date.isoformat(),
             "quantity": self.quantity,
+        }
+
+
+class NotificationChannel(db.Model):
+    __tablename__ = "notification_channel"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    platform = db.Column(db.Text, nullable=False)
+    label = db.Column(db.Text, nullable=False)
+    config_json = db.Column(db.Text, nullable=False)
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
+    reminders = db.relationship("Reminder", back_populates="channel", cascade="all, delete-orphan")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "platform": self.platform,
+            "label": self.label,
+            "config": json.loads(self.config_json),
+            "enabled": self.enabled,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class Reminder(db.Model):
+    __tablename__ = "reminder"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    batch_id = db.Column(db.Integer, db.ForeignKey("batch.id"), nullable=False)
+    channel_id = db.Column(db.Integer, db.ForeignKey("notification_channel.id"), nullable=False)
+    remind_at = db.Column(db.DateTime, nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    sent = db.Column(db.Boolean, nullable=False, default=False)
+    sent_at = db.Column(db.DateTime, nullable=True)
+    error = db.Column(db.Text, nullable=True)
+
+    batch = db.relationship("Batch", back_populates="reminders")
+    channel = db.relationship("NotificationChannel", back_populates="reminders")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "batch_id": self.batch_id,
+            "channel_id": self.channel_id,
+            "remind_at": self.remind_at.isoformat() if self.remind_at else None,
+            "message": self.message,
+            "sent": self.sent,
+            "sent_at": self.sent_at.isoformat() if self.sent_at else None,
+            "error": self.error,
         }

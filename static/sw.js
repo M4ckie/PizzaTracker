@@ -1,7 +1,8 @@
-var CACHE_NAME = "pizzadough-v1";
+var CACHE_NAME = "pizzadough-v2";
 var URLS_TO_CACHE = [
   "/",
   "/batches",
+  "/settings",
   "/static/style.css",
   "/static/app.js",
   "/static/manifest.json"

@@ -19,6 +19,7 @@
       <nav class="site-nav">
         <a href="{{ url_for('calculator_page') }}" class="nav-link {% if request.endpoint == 'calculator_page' %}active{% endif %}">Calculator</a>
         <a href="{{ url_for('batches_page') }}" class="nav-link {% if request.endpoint == 'batches_page' %}active{% endif %}">Batch History</a>
+        <a href="{{ url_for('settings_page') }}" class="nav-link {% if request.endpoint == 'settings_page' %}active{% endif %}">Settings</a>
       </nav>
     </div>
   </header>

@@ -212,6 +212,15 @@ function initCalculator() {
 // =========================================================
 
 function initBatches() {
+  var channelsCache = [];
+
+  function loadChannelsForReminders() {
+    fetch("/api/channels")
+      .then(function(r) { return r.json(); })
+      .then(function(data) { channelsCache = data; });
+  }
+  loadChannelsForReminders();
+
   var statTotal      = document.getElementById("stat-total");
   var statPizzas     = document.getElementById("stat-pizzas-baked");
   var statLastMade   = document.getElementById("stat-last-made");
@@ -314,6 +323,52 @@ function initBatches() {
         ? '<p class="batch-notes">' + escapeHtml(b.notes) + '</p>'
         : '';
 
+      // Reminder section
+      var reminderHtml = "";
+      if (b.remaining > 0) {
+        reminderHtml += '<div class="reminder-section">';
+        if (channelsCache.length === 0) {
+          reminderHtml += '<p class="reminder-none">Set up a channel in <a href="/settings">Settings</a> first</p>';
+        } else {
+          // Reminder form
+          var defaultDate = new Date();
+          defaultDate.setDate(defaultDate.getDate() + 3);
+          defaultDate.setHours(10, 0, 0, 0);
+          var dtVal = defaultDate.getFullYear() + "-" +
+            String(defaultDate.getMonth() + 1).padStart(2, "0") + "-" +
+            String(defaultDate.getDate()).padStart(2, "0") + "T10:00";
+          var defaultMsg = "Your " + b.count + "x " + b.size_inches + '" ' + b.thickness + " dough from " + b.made_date + " is ready to bake!";
+
+          reminderHtml += '<div class="reminder-form">';
+          reminderHtml += '<select class="select-input reminder-channel" data-batch-id="' + b.id + '">';
+          for (var ci = 0; ci < channelsCache.length; ci++) {
+            var ch = channelsCache[ci];
+            reminderHtml += '<option value="' + ch.id + '">' + ch.label + ' (' + ch.platform + ')</option>';
+          }
+          reminderHtml += '</select>';
+          reminderHtml += '<input type="datetime-local" class="date-input reminder-datetime" data-batch-id="' + b.id + '" value="' + dtVal + '" />';
+          reminderHtml += '<input type="text" class="notes-input reminder-msg" data-batch-id="' + b.id + '" value="' + defaultMsg.replace(/"/g, '&quot;') + '" />';
+          reminderHtml += '<button class="btn btn-sm btn-primary set-reminder-btn" data-batch-id="' + b.id + '">Set Reminder</button>';
+          reminderHtml += '</div>';
+        }
+
+        // Show existing unsent reminders
+        var unsent = (b.reminders || []).filter(function(r) { return !r.sent; });
+        if (unsent.length > 0) {
+          reminderHtml += '<div class="batch-reminders">';
+          for (var ri = 0; ri < unsent.length; ri++) {
+            var rem = unsent[ri];
+            var remDate = new Date(rem.remind_at).toLocaleString();
+            reminderHtml += '<div class="reminder-row">';
+            reminderHtml += '<span>' + remDate + '</span>';
+            reminderHtml += '<button class="btn-icon delete-reminder-btn" data-reminder-id="' + rem.id + '" title="Delete reminder">&times;</button>';
+            reminderHtml += '</div>';
+          }
+          reminderHtml += '</div>';
+        }
+        reminderHtml += '</div>';
+      }
+
       return '<div class="card batch-card ' + (b.fully_baked ? 'batch-done' : '') + '">' +
         '<div class="batch-header">' +
           '<div class="batch-info">' +
@@ -328,6 +383,7 @@ function initBatches() {
         notesHtml +
         bakesHtml +
         logBakeHtml +
+        reminderHtml +
         '</div>';
     }).join("");
 
@@ -357,6 +413,42 @@ function initBatches() {
         var id = btn.getAttribute("data-delete-bake");
         if (!window.confirm("Remove this bake entry?")) return;
         deleteBake(id);
+      });
+    });
+
+    // Attach set-reminder listeners
+    document.querySelectorAll(".set-reminder-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var batchId = btn.getAttribute("data-batch-id");
+        var channelSelect = document.querySelector('.reminder-channel[data-batch-id="' + batchId + '"]');
+        var dtInput = document.querySelector('.reminder-datetime[data-batch-id="' + batchId + '"]');
+        var msgInput = document.querySelector('.reminder-msg[data-batch-id="' + batchId + '"]');
+        if (!channelSelect || !dtInput || !msgInput) return;
+        fetch("/api/reminders", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            batch_id: parseInt(batchId),
+            channel_id: parseInt(channelSelect.value),
+            remind_at: dtInput.value,
+            message: msgInput.value
+          })
+        })
+        .then(function(r) {
+          if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || "Failed"); });
+          loadBatches();
+        })
+        .catch(function(err) { alert("Error: " + err.message); });
+      });
+    });
+
+    // Attach delete-reminder listeners
+    document.querySelectorAll(".delete-reminder-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (!confirm("Delete this reminder?")) return;
+        var remId = btn.getAttribute("data-reminder-id");
+        fetch("/api/reminders/" + remId, { method: "DELETE" })
+          .then(function() { loadBatches(); });
       });
     });
   }
@@ -414,10 +506,224 @@ function initBatches() {
 }
 
 // =========================================================
+// Settings page
+// =========================================================
+
+function initSettings() {
+  var platformSelect = document.getElementById("channel-platform");
+  if (!platformSelect) return;
+
+  var telegramFields = document.getElementById("telegram-fields");
+  var discordFields  = document.getElementById("discord-fields");
+
+  // Platform toggle
+  platformSelect.addEventListener("change", function () {
+    if (platformSelect.value === "telegram") {
+      telegramFields.hidden = false;
+      discordFields.hidden  = true;
+    } else {
+      telegramFields.hidden = true;
+      discordFields.hidden  = false;
+    }
+  });
+
+  var channelsList  = document.getElementById("channels-list");
+  var channelsEmpty = document.getElementById("channels-empty");
+
+  function loadChannels() {
+    fetch("/api/channels")
+      .then(function (resp) { return resp.json(); })
+      .then(function (channels) {
+        if (channels.length === 0) {
+          channelsEmpty.hidden   = false;
+          channelsList.hidden    = true;
+          channelsList.innerHTML = "";
+          return;
+        }
+
+        channelsEmpty.hidden = true;
+        channelsList.hidden  = false;
+
+        channelsList.innerHTML = channels.map(function (ch) {
+          return '<div class="channel-item">' +
+            '<div class="channel-info">' +
+              '<span class="channel-label">' + escapeHtml(ch.label) + '</span>' +
+              '<span class="channel-platform-badge">' + escapeHtml(ch.platform) + '</span>' +
+            '</div>' +
+            '<div class="channel-actions">' +
+              '<span class="channel-test-result" id="test-result-' + ch.id + '"></span>' +
+              '<button class="btn btn-sm btn-primary" data-test-channel="' + ch.id + '">Test</button>' +
+              '<button class="btn-icon batch-delete" data-delete-channel="' + ch.id + '" title="Delete">&times;</button>' +
+            '</div>' +
+          '</div>';
+        }).join("");
+
+        // Event delegation for test and delete buttons
+        channelsList.addEventListener("click", function (e) {
+          var testBtn   = e.target.closest("[data-test-channel]");
+          var deleteBtn = e.target.closest("[data-delete-channel]");
+
+          if (testBtn) {
+            var testId     = testBtn.getAttribute("data-test-channel");
+            var resultSpan = document.getElementById("test-result-" + testId);
+            fetch("/api/channels/" + encodeURIComponent(testId) + "/test", { method: "POST" })
+              .then(function (resp) {
+                if (!resp.ok) {
+                  return resp.json().then(function (d) { throw new Error(d.error || "Test failed"); });
+                }
+                return resp.json();
+              })
+              .then(function () {
+                resultSpan.textContent = "Sent!";
+                resultSpan.style.color = "green";
+                setTimeout(function () { resultSpan.textContent = ""; }, 3000);
+              })
+              .catch(function (err) {
+                resultSpan.textContent = err.message;
+                resultSpan.style.color = "red";
+                setTimeout(function () { resultSpan.textContent = ""; }, 3000);
+              });
+          }
+
+          if (deleteBtn) {
+            var deleteId = deleteBtn.getAttribute("data-delete-channel");
+            if (!window.confirm("Delete this channel?")) return;
+            fetch("/api/channels/" + encodeURIComponent(deleteId), { method: "DELETE" })
+              .then(function (resp) {
+                if (!resp.ok) {
+                  return resp.json().then(function (d) { throw new Error(d.error || "Delete failed"); });
+                }
+                loadChannels();
+              })
+              .catch(function (err) {
+                alert("Error: " + err.message);
+              });
+          }
+        });
+      })
+      .catch(function () {
+        channelsList.innerHTML = '<p class="loading-cell">Failed to load channels.</p>';
+      });
+  }
+
+  // Look up Chat ID button
+  var tgLookupBtn    = document.getElementById("tg-lookup-btn");
+  var tgBotToken     = document.getElementById("tg-bot-token");
+  var tgLookupResult = document.getElementById("tg-lookup-result");
+  var tgChatId       = document.getElementById("tg-chat-id");
+
+  if (tgLookupBtn) {
+    tgLookupBtn.addEventListener("click", function () {
+      var token = tgBotToken.value.trim();
+      if (!token) {
+        tgLookupResult.textContent = "Enter a bot token first";
+        return;
+      }
+
+      fetch("/api/telegram/updates?bot_token=" + encodeURIComponent(token))
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+          var seen    = {};
+          var chats   = [];
+          var results = data.result || [];
+          for (var i = 0; i < results.length; i++) {
+            var msg = results[i].message;
+            if (msg && msg.chat) {
+              var chat = msg.chat;
+              if (!seen[chat.id]) {
+                seen[chat.id] = true;
+                chats.push({ id: chat.id, name: chat.first_name || chat.title || String(chat.id) });
+              }
+            }
+          }
+
+          if (chats.length === 0) {
+            tgLookupResult.textContent = "No chats found. Send your bot a message first.";
+            return;
+          }
+
+          tgLookupResult.innerHTML = chats.map(function (c) {
+            return '<span style="cursor:pointer;text-decoration:underline;margin-right:8px;" data-chat-id="' + c.id + '">' +
+              'Chat: ' + escapeHtml(c.name) + ' (ID: ' + c.id + ')' +
+            '</span>';
+          }).join("");
+
+          tgLookupResult.querySelectorAll("[data-chat-id]").forEach(function (span) {
+            span.addEventListener("click", function () {
+              tgChatId.value = span.getAttribute("data-chat-id");
+            });
+          });
+        })
+        .catch(function () {
+          tgLookupResult.textContent = "Failed to look up chat ID";
+        });
+    });
+  }
+
+  // Add Channel button
+  var addChannelBtn   = document.getElementById("add-channel-btn");
+  var channelLabel    = document.getElementById("channel-label");
+  var channelFeedback = document.getElementById("channel-feedback");
+
+  if (addChannelBtn) {
+    addChannelBtn.addEventListener("click", function () {
+      var platform = platformSelect.value;
+      var label    = channelLabel.value.trim();
+
+      if (!label) {
+        channelFeedback.textContent = "Label is required";
+        channelFeedback.style.color = "red";
+        return;
+      }
+
+      var config;
+      if (platform === "telegram") {
+        config = {
+          bot_token: document.getElementById("tg-bot-token").value,
+          chat_id:   document.getElementById("tg-chat-id").value
+        };
+      } else {
+        config = {
+          webhook_url: document.getElementById("dc-webhook-url").value
+        };
+      }
+
+      fetch("/api/channels", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ platform: platform, label: label, config: config })
+      })
+        .then(function (resp) {
+          if (!resp.ok) {
+            return resp.json().then(function (d) { throw new Error(d.error || "Add failed"); });
+          }
+          return resp.json();
+        })
+        .then(function () {
+          channelLabel.value = "";
+          if (document.getElementById("tg-bot-token"))   document.getElementById("tg-bot-token").value   = "";
+          if (document.getElementById("tg-chat-id"))     document.getElementById("tg-chat-id").value     = "";
+          if (document.getElementById("dc-webhook-url")) document.getElementById("dc-webhook-url").value = "";
+          channelFeedback.textContent = "Channel added!";
+          channelFeedback.style.color = "green";
+          loadChannels();
+        })
+        .catch(function (err) {
+          channelFeedback.textContent = err.message;
+          channelFeedback.style.color = "red";
+        });
+    });
+  }
+
+  loadChannels();
+}
+
+// =========================================================
 // Entry point
 // =========================================================
 
 document.addEventListener("DOMContentLoaded", function () {
   initCalculator();
   initBatches();
+  initSettings();
 });

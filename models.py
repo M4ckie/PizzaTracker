@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, datetime
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -88,7 +88,7 @@ class NotificationChannel(db.Model):
     label = db.Column(db.Text, nullable=False)
     config_json = db.Column(db.Text, nullable=False)
     enabled = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     reminders = db.relationship("Reminder", back_populates="channel", cascade="all, delete-orphan")
 

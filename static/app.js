@@ -18,7 +18,10 @@ function escapeHtml(str) {
 }
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  var d = new Date();
+  var month = String(d.getMonth() + 1).padStart(2, "0");
+  var day = String(d.getDate()).padStart(2, "0");
+  return d.getFullYear() + "-" + month + "-" + day;
 }
 
 // =========================================================

@@ -55,7 +55,7 @@ scheduler = APScheduler()
 def check_reminders():
     """Find due unsent reminders and send them."""
     with app.app_context():
-        now = datetime.utcnow()
+        now = datetime.now()
         due = Reminder.query.filter(
             Reminder.sent == False,
             Reminder.remind_at <= now,

@@ -4,4 +4,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 5099
+ENV TZ=America/New_York
 CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5099"]

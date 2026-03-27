@@ -4,9 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Pizza Dough Calculator{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600&family=Work+Sans:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
-  <meta name="theme-color" content="#2c1a0e" />
+  <meta name="theme-color" content="#2f3131" />
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}" />
 </head>
 <body>
@@ -27,6 +31,21 @@
   <main class="main-content">
     {% block content %}{% endblock %}
   </main>
+
+  <nav class="bottom-nav">
+    <a href="{{ url_for('calculator_page') }}" class="bottom-nav-link {% if request.endpoint == 'calculator_page' %}active{% endif %}">
+      <span class="material-symbols-outlined">calculate</span>
+      <span class="bottom-nav-label">Calculator</span>
+    </a>
+    <a href="{{ url_for('batches_page') }}" class="bottom-nav-link {% if request.endpoint == 'batches_page' %}active{% endif %}">
+      <span class="material-symbols-outlined">history</span>
+      <span class="bottom-nav-label">Batches</span>
+    </a>
+    <a href="{{ url_for('settings_page') }}" class="bottom-nav-link {% if request.endpoint == 'settings_page' %}active{% endif %}">
+      <span class="material-symbols-outlined">settings</span>
+      <span class="bottom-nav-label">Settings</span>
+    </a>
+  </nav>
 
   <footer class="site-footer">
     <p>Pizza Dough Calculator &mdash; Baker's percentage method</p>

@@ -3,8 +3,8 @@
   "short_name": "Pizza Dough",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fdf6ed",
-  "theme_color": "#2c1a0e",
+  "background_color": "#f9f9f9",
+  "theme_color": "#2f3131",
   "icons": [
     {
       "src": "/static/icon-192.png",

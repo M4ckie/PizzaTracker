@@ -716,6 +716,14 @@ body {
   border-top: 1px solid var(--color-outline-variant);
 }
 
+.bake-entry {
+  padding: 0.2rem 0;
+}
+
+.bake-entry + .bake-entry {
+  border-top: 1px dashed rgba(228,190,186,0.35);
+}
+
 .bake-row {
   display: flex;
   justify-content: space-between;
@@ -723,6 +731,69 @@ body {
   padding: 0.3rem 0;
   font-size: 0.85rem;
   color: var(--color-on-surface);
+}
+
+/* Bake notes */
+.bake-notes {
+  padding: 0.1rem 0 0.1rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-on-surface-variant);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bake-notes-text {
+  flex: 1;
+}
+
+.bake-notes-edit {
+  font-size: 0.85rem;
+  opacity: 0.45;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.bake-notes-edit:hover {
+  color: var(--color-primary) !important;
+  opacity: 1;
+}
+
+.bake-notes-empty {
+  font-style: normal;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.78rem;
+  color: var(--color-on-surface-variant);
+  padding: 0;
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.btn-link:hover {
+  color: var(--color-primary);
+  opacity: 1;
+}
+
+.bake-notes-editor {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-left: 0.75rem;
+}
+
+.bake-notes-editor .notes-input {
+  flex: 1;
+}
+
+.notes-input-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.82rem;
 }
 
 .btn-icon {
@@ -758,6 +829,10 @@ body {
   padding-top: 0.65rem;
   border-top: 1px solid var(--color-outline-variant);
   flex-wrap: wrap;
+}
+
+.log-bake-form .bake-notes-input {
+  flex: 1 1 100%;
 }
 
 .select-sm {
@@ -904,6 +979,34 @@ body {
 
   .log-bake-form {
     gap: 0.4rem;
+  }
+
+  /* Larger, more visible delete buttons on mobile */
+  .batch-delete {
+    font-size: 1.1rem;
+    background: rgba(186, 26, 26, 0.08);
+    color: var(--color-error);
+    border-radius: var(--radius-sm);
+    padding: 0.3rem 0.5rem;
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bake-row .btn-icon[data-delete-bake] {
+    font-size: 1.1rem;
+    background: rgba(186, 26, 26, 0.06);
+    border-radius: var(--radius-sm);
+    padding: 0.25rem 0.4rem;
+    min-width: 32px;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-error);
+    opacity: 0.7;
   }
 }
 

@@ -22,6 +22,13 @@ with app.app_context():
     os.makedirs(app.instance_path, exist_ok=True)
     db.create_all()
 
+    # Migrate: add notes column to bake table if missing
+    with db.engine.connect() as conn:
+        cols = [row[1] for row in conn.execute(db.text("PRAGMA table_info(bake)"))]
+        if "notes" not in cols:
+            conn.execute(db.text("ALTER TABLE bake ADD COLUMN notes TEXT"))
+            conn.commit()
+
     # Auto-create notification channels from environment variables
     tg_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     tg_chat = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
@@ -212,6 +219,7 @@ def api_bake_create(batch_id):
     try:
         quantity = int(data.get("quantity", 0))
         baked_date_str = data.get("baked_date")
+        notes = data.get("notes") or None
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid field values"}), 400
 
@@ -223,10 +231,27 @@ def api_bake_create(batch_id):
 
     baked_date = date.fromisoformat(baked_date_str) if baked_date_str else date.today()
 
-    bake = Bake(batch_id=batch_id, baked_date=baked_date, quantity=quantity)
+    bake = Bake(batch_id=batch_id, baked_date=baked_date, quantity=quantity, notes=notes)
     db.session.add(bake)
     db.session.commit()
     return jsonify(batch.to_dict()), 201
+
+
+@app.route("/api/bakes/<int:bake_id>", methods=["PATCH"])
+def api_bake_update(bake_id):
+    bake = db.session.get(Bake, bake_id)
+    if bake is None:
+        return jsonify({"error": "Bake not found"}), 404
+
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    if "notes" in data:
+        bake.notes = data["notes"] or None
+
+    db.session.commit()
+    return jsonify(bake.batch.to_dict())
 
 
 @app.route("/api/bakes/<int:bake_id>", methods=["DELETE"])

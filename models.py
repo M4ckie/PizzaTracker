@@ -69,6 +69,7 @@ class Bake(db.Model):
     batch_id = db.Column(db.Integer, db.ForeignKey("batch.id"), nullable=False)
     baked_date = db.Column(db.Date, nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
+    notes = db.Column(db.Text, nullable=True)
 
     batch = db.relationship("Batch", back_populates="bakes")
 
@@ -77,6 +78,7 @@ class Bake(db.Model):
             "id": self.id,
             "baked_date": self.baked_date.isoformat(),
             "quantity": self.quantity,
+            "notes": self.notes,
         }
 
 

@@ -299,9 +299,23 @@ function initBatches() {
               var days = Math.round((d2 - d1) / 86400000);
               ferment = ' <span class="text-muted">(' + days + 'd ferment)</span>';
             }
-            return '<div class="bake-row">' +
+            var bakeNotesHtml = '';
+            if (bk.notes) {
+              bakeNotesHtml = '<div class="bake-notes" data-bake-id="' + bk.id + '">' +
+                '<span class="bake-notes-text">' + escapeHtml(bk.notes) + '</span>' +
+                '<button class="btn-icon bake-notes-edit" data-edit-bake-notes="' + bk.id + '" title="Edit notes">&#9998;</button>' +
+                '</div>';
+            } else {
+              bakeNotesHtml = '<div class="bake-notes bake-notes-empty" data-bake-id="' + bk.id + '">' +
+                '<button class="btn-link add-bake-note-btn" data-edit-bake-notes="' + bk.id + '">+ Add note</button>' +
+                '</div>';
+            }
+            return '<div class="bake-entry">' +
+              '<div class="bake-row">' +
               '<span>' + bk.baked_date + ' \u2014 ' + bk.quantity + ' pizza' + (bk.quantity > 1 ? 's' : '') + ferment + '</span>' +
               '<button class="btn-icon" data-delete-bake="' + bk.id + '" title="Remove">\u00D7</button>' +
+              '</div>' +
+              bakeNotesHtml +
               '</div>';
           }).join("") +
           '</div>';
@@ -319,6 +333,7 @@ function initBatches() {
           '<span class="text-muted">pizza' + (b.remaining > 1 ? 's' : '') + ' on</span>' +
           '<input type="date" class="date-input date-input-sm bake-date" value="' + todayStr() + '" />' +
           '<button class="btn btn-primary btn-sm log-bake-btn">Log Bake</button>' +
+          '<input type="text" class="notes-input notes-input-sm bake-notes-input" placeholder="Bake notes (optional)" />' +
           '</div>';
       }
 
@@ -397,7 +412,8 @@ function initBatches() {
         var batchId = form.getAttribute("data-batch-id");
         var qty = parseInt(form.querySelector(".bake-qty").value, 10);
         var dateVal = form.querySelector(".bake-date").value;
-        logBake(batchId, qty, dateVal);
+        var notes = form.querySelector(".bake-notes-input").value.trim() || null;
+        logBake(batchId, qty, dateVal, notes);
       });
     });
 
@@ -416,6 +432,35 @@ function initBatches() {
         var id = btn.getAttribute("data-delete-bake");
         if (!window.confirm("Remove this bake entry?")) return;
         deleteBake(id);
+      });
+    });
+
+    // Attach edit-bake-notes listeners
+    batchesList.querySelectorAll("[data-edit-bake-notes]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var bakeId = btn.getAttribute("data-edit-bake-notes");
+        var container = batchesList.querySelector('.bake-notes[data-bake-id="' + bakeId + '"]');
+        if (!container || container.querySelector(".bake-notes-editor")) return;
+        var currentText = "";
+        var textEl = container.querySelector(".bake-notes-text");
+        if (textEl) currentText = textEl.textContent;
+        container.innerHTML = '<div class="bake-notes-editor">' +
+          '<input type="text" class="notes-input notes-input-sm bake-notes-edit-input" value="' + escapeHtml(currentText) + '" />' +
+          '<button class="btn btn-primary btn-sm bake-notes-save-btn">Save</button>' +
+          '<button class="btn btn-sm bake-notes-cancel-btn">Cancel</button>' +
+          '</div>';
+        var input = container.querySelector(".bake-notes-edit-input");
+        input.focus();
+        container.querySelector(".bake-notes-save-btn").addEventListener("click", function () {
+          saveBakeNotes(bakeId, input.value.trim());
+        });
+        container.querySelector(".bake-notes-cancel-btn").addEventListener("click", function () {
+          loadBatches();
+        });
+        input.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") saveBakeNotes(bakeId, input.value.trim());
+          if (e.key === "Escape") loadBatches();
+        });
       });
     });
 
@@ -456,11 +501,28 @@ function initBatches() {
     });
   }
 
-  function logBake(batchId, quantity, dateStr) {
+  function saveBakeNotes(bakeId, notes) {
+    fetch("/api/bakes/" + encodeURIComponent(bakeId), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: notes || null })
+    })
+      .then(function (resp) {
+        if (!resp.ok) {
+          return resp.json().then(function (d) { throw new Error(d.error || "Failed"); });
+        }
+        loadBatches();
+      })
+      .catch(function (err) {
+        alert("Error: " + err.message);
+      });
+  }
+
+  function logBake(batchId, quantity, dateStr, notes) {
     fetch("/api/batches/" + encodeURIComponent(batchId) + "/bakes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quantity: quantity, baked_date: dateStr })
+      body: JSON.stringify({ quantity: quantity, baked_date: dateStr, notes: notes })
     })
       .then(function (resp) {
         if (!resp.ok) {
